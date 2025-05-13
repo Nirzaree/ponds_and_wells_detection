@@ -1,6 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 import numpy as np
+import ee
 
 
 def merge_swb_ponds(swb_layer_path,
@@ -17,13 +18,13 @@ def merge_swb_ponds(swb_layer_path,
     #Load ponds layer
     ponds_gdf= gpd.read_file(ponds_layer_path)
 
-    #change their crs
-    swb_gdf.to_crs('epsg:7755',inplace=True)
-    ponds_gdf.to_crs('epsg:7755',inplace=True)
+    # #change their crs
+    # swb_gdf.to_crs('epsg:7755',inplace=True)
+    # ponds_gdf.to_crs('epsg:7755',inplace=True)
 
-    #compute area of geometries
-    swb_gdf['area_m2'] = swb_gdf['geometry'].area
-    ponds_gdf['area_m2'] = ponds_gdf['geometry'].area
+    # #compute area of geometries
+    # swb_gdf['area_m2'] = swb_gdf['geometry'].area
+    # ponds_gdf['area_m2'] = ponds_gdf['geometry'].area
 
     # create merged_gdf
     intersecting_UIDs = swb_gdf.sjoin(ponds_gdf)['UID'].tolist()
