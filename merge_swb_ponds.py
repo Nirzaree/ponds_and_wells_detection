@@ -37,7 +37,7 @@ def merge_swb_ponds(swb_layer_path,
     '''
     module to merge swb and ponds layer
     '''
-    ee_initialize()
+    ee.Initialize()
 
     swb_fc = ee.FeatureCollection(swb_layer_path)
     ponds_fc = ee.FeatureCollection(ponds_layer_path)
@@ -197,7 +197,14 @@ def merge_swb_ponds(swb_layer_path,
     )
     task.start()  
 
-
+#example run for a block (gobindpur)
+# merge_swb_ponds(
+#     swb_layer_path='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/swb3_saraikela-kharsawan_gobindpur',
+#     ponds_layer_path='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/ponds_saraikela-kharsawan_gobindpur',
+#     mws_layer_path='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/filtered_mws_saraikela-kharsawan_gobindpur_uid',
+#     admin_boundary_layer_path='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/admin_boundary_saraikela-kharsawan_gobindpur',
+#     ee_asset_name='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/merging_test_through_py_file'
+# )
 
     
 
