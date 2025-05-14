@@ -5,12 +5,13 @@ import os
 import shapely
 import ee
 import geemap
+import re
 
 def split_multipolygon_into_individual_polygons(data_gdf):
     data_gdf = data_gdf.explode()
     return data_gdf
 
-def clip_to_admin_boundary(data_gdf,boundary_gdf):
+def clip_to_boundary(data_gdf,boundary_gdf):
     data_gdf = data_gdf.sjoin(boundary_gdf[['geometry']],how = 'inner')
     data_gdf.drop(['index_right'],axis=1,inplace=True)
     return data_gdf
@@ -28,21 +29,59 @@ def dissolve_boundary(data_gdf):
     data_gdf = data_gdf.dissolve()
     return data_gdf
 
-def merge_swb_ponds(swb_layer_path,
-                    ponds_layer_path,
-                    mws_layer_path,
-                    admin_boundary_layer_path,
-                    ee_asset_name
+def valid_gee_text(description):
+    description = re.sub(r"[^a-zA-Z0-9 .,:;_-]", "", description)
+    return description.replace(" ", "_")
+
+def get_gee_asset_path(asset_path, state, district=None, block=None):
+    gee_path = asset_path + valid_gee_text(state.lower()) + "/"
+    if district:
+        gee_path += valid_gee_text(district.lower()) + "/"
+    if block:
+        gee_path += valid_gee_text(block.lower()) + "/"
+    return gee_path
+
+def merge_swb_ponds(state,
+                    district,
+                    block,
+                    ee_assets_prefix = 'projects/ee-corestackdev/assets/apps/mws/',
+                    output_suffix = '_merged_swb_ponds'
                     ):
     '''
     module to merge swb and ponds layer
     '''
     ee.Initialize()
 
-    swb_fc = ee.FeatureCollection(swb_layer_path)
-    ponds_fc = ee.FeatureCollection(ponds_layer_path)
-    mws_fc = ee.FeatureCollection(mws_layer_path)
-    admin_boundary_fc = ee.FeatureCollection(admin_boundary_layer_path)
+    state = state.lower()
+    district = district.lower()
+    block = block.lower()
+
+    block_path_ee = get_gee_asset_path(
+        asset_path=ee_assets_prefix,
+        state=state,
+        district=district,
+        block=block
+    )
+
+    #swb asset
+    assets = ee.data.listAssets({'parent': block_path_ee})['assets']
+    swb_layer_path = [asset['id'] for asset in assets if 'swb3' in os.path.basename(asset['id'])]
+    if (len(swb_layer_path) == 0):
+        swb_layer_path = [asset['id'] for asset in assets if 'swb2' in os.path.basename(asset['id'])]
+
+    #ponds asset
+    ponds_layer_path = [asset['id'] for asset in assets if 'ponds_' in os.path.basename(asset['id'])]
+
+    #mws asset
+    mws_layer_path = [asset['id'] for asset in assets if 'mws_' in os.path.basename(asset['id'])]
+
+    #admin boundary asset
+    admin_boundary_layer_path = [asset['id'] for asset in assets if 'admin_boundary' in os.path.basename(asset['id'])]
+
+    swb_fc = ee.FeatureCollection(swb_layer_path[0])
+    ponds_fc = ee.FeatureCollection(ponds_layer_path[0])
+    mws_fc = ee.FeatureCollection(mws_layer_path[0])
+    admin_boundary_fc = ee.FeatureCollection(admin_boundary_layer_path[0])
 
     ponds_gdf = gpd.GeoDataFrame.from_features(ponds_fc.getInfo())
     swb_gdf = gpd.GeoDataFrame.from_features(swb_fc.getInfo())
@@ -58,14 +97,24 @@ def merge_swb_ponds(swb_layer_path,
     if admin_boundary_gdf.shape[0] > 1:
         admin_boundary_gdf = dissolve_boundary(admin_boundary_gdf)
 
-    ponds_gdf = clip_to_admin_boundary(
+    ponds_gdf = clip_to_boundary(
         data_gdf=ponds_gdf,
         boundary_gdf=admin_boundary_gdf)
     
-    swb_gdf = clip_to_admin_boundary(
+    swb_gdf = clip_to_boundary(
         data_gdf=swb_gdf,
         boundary_gdf=admin_boundary_gdf)
+
+    # mws_outer_boundary_gdf = dissolve_boundary(mws_gdf)
+
+    # ponds_gdf = clip_to_boundary(
+    #     data_gdf=ponds_gdf,
+    #     boundary_gdf=mws_outer_boundary_gdf)
     
+    # swb_gdf = clip_to_boundary(
+    #     data_gdf=swb_gdf,
+    #     boundary_gdf=mws_outer_boundary_gdf)    
+
     #create merged df
     #add standalone swbs
     intersecting_UIDs = swb_gdf.sjoin(ponds_gdf)['UID'].tolist()
@@ -113,11 +162,11 @@ def merge_swb_ponds(swb_layer_path,
         ])
 
     #case 2:
-    single_intersection_pond_ids = [row['pond_id'] for ind,row in pond_intersections_df.iterrows() if len(row['UID']) == 1]
-    #ponds that intersect with only 1 swb
+    # single_intersection_pond_ids = [row['pond_id'] for ind,row in pond_intersections_df.iterrows() if len(row['UID']) == 1]
+    # #ponds that intersect with only 1 swb
 
-    multi_intersection_pond_ids = [row['pond_id'] for ind,row in pond_intersections_df.iterrows() if len(row['UID']) > 1]
-    #ponds that intersect with only 1 swb
+    # multi_intersection_pond_ids = [row['pond_id'] for ind,row in pond_intersections_df.iterrows() if len(row['UID']) > 1]
+    # #ponds that intersect with only 1 swb
 
     case2_swb_ids = []
     for x in single_intersection_uids:
@@ -192,26 +241,15 @@ def merge_swb_ponds(swb_layer_path,
         **{
             "collection": merged_fc,
             "description": 'merging swb and pond layer',
-            "assetId": ee_asset_name,
+            "assetId": block_path_ee + str(district) + '_' + str(block) + output_suffix + '_test',
         }
     )
-    task.start()  
+    task.start() 
 
 #example run for a block (gobindpur)
+
 # merge_swb_ponds(
-#     swb_layer_path='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/swb3_saraikela-kharsawan_gobindpur',
-#     ponds_layer_path='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/ponds_saraikela-kharsawan_gobindpur',
-#     mws_layer_path='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/filtered_mws_saraikela-kharsawan_gobindpur_uid',
-#     admin_boundary_layer_path='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/admin_boundary_saraikela-kharsawan_gobindpur',
-#     ee_asset_name='projects/ee-corestackdev/assets/apps/mws/jharkhand/saraikela-kharsawan/gobindpur/merging_test_through_py_file'
+#     state='jharkhand',
+#     district='saraikela-kharsawan',
+#     block='gobindpur'
 # )
-
-    
-
-    
-
-
-
-
-
-
