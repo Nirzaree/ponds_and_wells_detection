@@ -13,6 +13,8 @@ Merging Logic:
         2. One pond intersects with multiple SWBs : final geometry = swb geometry (because on visual inspection of these cases, they were mostly arising due to buffer operation being applied on ponds detection pipeline, resulting in geometries which are sometimes representing multiple ponds in a single boundary)  
         3. One swb intersects with multiple ponds (and corresponding pond intersects with only single swb) : final geometry =  union of pond and swb geometries  
         4. One swb intersects with multiple ponds (and corresponding pond intersects with more than one swb) :  union of pond and swb geometries  
+    
+How to run the code: 
 
 ### 1. Create a virtual environment  
 ```conda create --name .venv python=3.12.3```
