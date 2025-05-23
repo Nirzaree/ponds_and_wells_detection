@@ -8,7 +8,7 @@ Merging Logic:
     b. Add standalone ponds (those that dont intersect with any surface waterbodies)  
     c. Intersection cases:  
 
-      ![alt text](<Screenshot from 2025-05-09 13-16-39.png>)  
+      ![alt text](<files/Screenshot from 2025-05-09 13-16-39.png>)  
         1. One swb intersects with one pond : final geometry = union of pond and swb geometries  
         2. One pond intersects with multiple SWBs : final geometry = swb geometry (because on visual inspection of these cases, they were mostly arising due to buffer operation being applied on ponds detection pipeline, resulting in geometries which are sometimes representing multiple ponds in a single boundary)  
         3. One swb intersects with multiple ponds (and corresponding pond intersects with only single swb) : final geometry =  union of pond and swb geometries  
